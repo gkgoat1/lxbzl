@@ -19,21 +19,23 @@ tar = rule(
     }
 )
 
-M4Library = provider(attrs = {"srcs": "files to process"})
+M4Library = provider(attrs = {"srcs": "files to process","uses": "Files used"})
 def _m4_impl(ctx):
     t = []
     for d in ctx.attr.deps:
         t += [d[M4Library].srcs]
     s = depset(ctx.attr.srcs,transitive = t)
+    u = depset(ctx.attr.uses,transitive = [d[M4Library].uses for d in ctx.attr.deps])
     t = ctx.actions.declare_file("out")
-    ctx.actions.run(nmemonic = "m4",executable = "/bin/m4",inputs = s,outputs = [t],arguments = ["-o",t] + ctx.attr.flags + s)
-    return [M4Library(srcs = s),DefaultInfo(files = [t])]
+    ctx.actions.run(nmemonic = "m4",executable = "/bin/m4",inputs = s.to_list() + u.to_list(),outputs = [t],arguments = ["-o",t] + ctx.attr.flags + s)
+    return [M4Library(srcs = s,uses = u),DefaultInfo(files = [t])]
 
 m4 = rule(
     implementation = _m4_library_impl,
     attrs = {
         "deps": attr.label_list(),
         "srcs": attr.label_list(allow_files=True),
+        "uses": attr.label_list(allow_files=True),
         "flags": attr.string_list()
     }
 )
